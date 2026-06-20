@@ -205,18 +205,28 @@
   .freq-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
   .freq-card{
     background:var(--surface);border:1px solid var(--line);border-radius:11px;
-    padding:13px 16px;display:flex;align-items:center;gap:14px;
+    padding:13px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;
+    transition:border-color .12s,box-shadow .12s;
   }
   .freq-card.ko{border-color:#f0cccc;background:#fdf6f6}
+  .freq-card.hi,.freq-card.sel{border-color:var(--signal);box-shadow:0 0 0 2px rgba(238,123,6,.22)}
   .fc-tag{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--muted);flex:none;width:54px}
+  .fc-tag.iem{color:#7a4ad6}
   .fc-main{flex:1;min-width:0}
   .fc-freq{font-family:var(--mono);font-weight:700;font-size:24px;letter-spacing:-.01em;line-height:1}
   .fc-freq .unit{font-size:12px;color:var(--muted);font-weight:500;margin-left:4px}
   .fc-freq.ko{font-size:15px;color:var(--danger)}
   .fc-sub{font-size:12px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+  .fc-sub.ko-why{color:var(--danger);white-space:normal;line-height:1.35}
+  .fc-meta{font-size:12px;color:var(--faint);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fc-status{flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
   .fc-status.ok{background:#e4f5ec;color:var(--ok)}
   .fc-status.ko{background:#fbe6e6;color:var(--danger)}
+  /* surbrillance des aiguilles du spectre */
+  .needle{cursor:pointer}
+  .needle line{transition:stroke-width .1s}
+  .needle.hi line,.needle.sel line{stroke-width:4}
+  .needle.hi circle,.needle.sel circle{r:5}
 
   .export-btn{
     width:100%;font-family:var(--body);font-weight:600;font-size:14px;
@@ -1201,13 +1211,16 @@ function renderResults(plan, channels, label, warn, la, lo) {
   const ticks = [470, 510, 550, 590, 630, 670, 694].map(t =>
     `<line x1="${x(t)}" y1="${base}" x2="${x(t)}" y2="${base + 4}" stroke="var(--line)" stroke-width="1"/>
      <text x="${x(t)}" y="${base + 16}" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--faint)">${t}</text>`).join('');
-  const needles = slots.filter(s => s.freq != null && s.freq >= F0 && s.freq < F1).map((s, k) => {
-    const xf = x(s.freq);
-    return `<g class="needle" style="animation-delay:${k * 60}ms">
+  const needles = slots.map((s, i) => ({ s, i }))
+    .filter(o => o.s.freq != null && o.s.freq >= F0 && o.s.freq < F1)
+    .map((o, k) => {
+      const xf = x(o.s.freq);
+      return `<g class="needle" data-idx="${o.i}" style="animation-delay:${k * 60}ms">
+        <rect class="needle-hit" x="${(xf - 7).toFixed(1)}" y="${top - 6}" width="14" height="${base - top + 10}" fill="transparent"/>
         <line x1="${xf.toFixed(1)}" y1="${base}" x2="${xf.toFixed(1)}" y2="${top - 2}" stroke="var(--signal)" stroke-width="2"/>
         <circle cx="${xf.toFixed(1)}" cy="${top - 2}" r="3" fill="var(--signal)"/>
       </g>`;
-  }).join('');
+    }).join('');
   const outBand = slots.filter(s => s.freq != null && !(s.freq >= F0 && s.freq < F1)).length;
 
   const spectrum = `
@@ -1216,20 +1229,29 @@ function renderResults(plan, channels, label, warn, la, lo) {
       ${occRects}${ticks}${needles}
     </svg>`;
 
-  const cards = slots.map(s => {
+  const cards = slots.map((s, i) => {
+    const mic = mics[i] || {};
+    const gear = `${mic.brand || ''} ${mic.model || ''}`.trim();
+    const gamme = mic.band ? `${mic.band} · ${mic.fmin}–${mic.fmax} MHz` : '';
+    const meta = gear ? `<div class="fc-meta">${gear}${gamme ? ` · ${gamme}` : ''}</div>` : '';
+    const iemCls = mic.kind === 'iem' ? ' iem' : '';
     if (s.freq == null) return `
-      <div class="freq-card ko">
-        <span class="fc-tag">${s.name}</span>
-        <div class="fc-main"><div class="fc-freq ko">Aucune fréquence libre</div>
-          <div class="fc-sub">réduisez le nombre de micros ou changez de gamme</div></div>
+      <div class="freq-card ko" data-idx="${i}">
+        <span class="fc-tag${iemCls}">${s.name}</span>
+        <div class="fc-main">
+          <div class="fc-freq ko">Aucune fréquence libre</div>
+          ${meta}
+          <div class="fc-sub ko-why">${whyBlocked(mic, channels)}</div>
+        </div>
         <div class="fc-status ko">!</div>
       </div>`;
     return `
-      <div class="freq-card">
-        <span class="fc-tag">${s.name}</span>
+      <div class="freq-card" data-idx="${i}">
+        <span class="fc-tag${iemCls}">${s.name}</span>
         <div class="fc-main">
           <div class="fc-freq">${s.freq.toFixed(3)}<span class="unit">MHz</span></div>
           <div class="fc-sub">${chanLabel(s.freq)}${s.off ? ' · hors grille TNT' : ' · libre'}</div>
+          ${meta}
         </div>
         <div class="fc-status ok">✓</div>
       </div>`;
@@ -1271,7 +1293,46 @@ function renderResults(plan, channels, label, warn, la, lo) {
   $('results').classList.add('show');
   $('exportBtn').addEventListener('click', () => exportCSV(slots, la, lo, label));
   $('exportPdfBtn').addEventListener('click', () => exportPDF(slots, la, lo, label));
-  $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // — surbrillance croisée porteuse ↔ carte (survol + clic pour épingler) —
+  const root = $('results');
+  const cardEls = [...root.querySelectorAll('.freq-card')];
+  const needleEls = [...root.querySelectorAll('.needle')];
+  const elsFor = idx => [...cardEls, ...needleEls].filter(el => +el.dataset.idx === idx);
+  const hover = (idx, on) => elsFor(idx).forEach(el => el.classList.toggle('hi', on));
+  let pinned = null;
+  const pin = idx => {
+    pinned = pinned === idx ? null : idx;
+    [...cardEls, ...needleEls].forEach(el => el.classList.toggle('sel', +el.dataset.idx === pinned));
+    if (pinned != null) {
+      const card = cardEls.find(el => +el.dataset.idx === pinned);
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+  [...cardEls, ...needleEls].forEach(el => {
+    const idx = +el.dataset.idx;
+    el.addEventListener('mouseenter', () => hover(idx, true));
+    el.addEventListener('mouseleave', () => hover(idx, false));
+    el.addEventListener('click', () => pin(idx));
+  });
+
+  root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Explique pourquoi une voie n'a pas pu être placée (TNT saturée vs coordination).
+function whyBlocked(mic, channels) {
+  const lo = mic.fmin, hi = mic.fmax;
+  if (lo == null || hi == null || hi <= lo)
+    return 'Aucun créneau compatible avec les autres voies — réduisez le nombre de voies ou élargissez la gamme.';
+  const occ = (channels || []).filter(c => c.occupied && c.freq_end > lo && c.freq_start < hi);
+  const occWidth = occ.reduce((s, c) => s + (Math.min(hi, c.freq_end) - Math.max(lo, c.freq_start)), 0);
+  const frac = (hi - lo) > 0 ? occWidth / (hi - lo) : 0;
+  if (occ.length && frac >= 0.45) {
+    const chs = occ.map(c => c.ch).slice(0, 6).join(', ');
+    const plural = occ.length > 1;
+    return `Plage ${lo}–${hi} MHz trop encombrée ici : ${occ.length} ${plural ? 'canaux' : 'canal'} TV occupé${plural ? 's' : ''} (ch ${chs}${occ.length > 6 ? '…' : ''}) couvre${plural ? 'nt' : ''} ~${Math.round(frac * 100)} % de la bande. Choisissez une autre gamme/bande ou un modèle large bande.`;
+  }
+  return 'Pas de créneau libre compatible avec les autres voies (espacement / intermodulation). Réduisez le nombre de voies, élargissez la gamme ou retirez une voie proche.';
 }
 
 function exportCSV(slots, la, lo, label) {
