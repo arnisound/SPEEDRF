@@ -352,7 +352,7 @@
         <span class="field-label">Fréq. max (MHz)</span>
         <input id="cmax" type="number" inputmode="decimal" step="0.025" placeholder="ex. 608">
       </label>
-      <div class="custom-hint" style="grid-column:span 2">Reportez la plage d'accord indiquée sur l'appareil. Bandes autorisées en France : 470–694, 823–832, 863–865, 1785–1805, 2400–2483,5 MHz.</div>
+      <div class="custom-hint" style="grid-column:span 2">Reportez la plage d'accord indiquée sur l'appareil. Bandes autorisées en France : 470–694, 823–832, 863–865, 1785–1805 MHz. (Les systèmes 2,4 / 5 GHz se gèrent seuls et ne sont pas pris en charge.)</div>
       <div class="custom-err" id="customErr" style="grid-column:span 2" hidden></div>
     </div>
     <button class="add-btn" id="addMic">+ Ajouter ce micro</button>
@@ -436,9 +436,16 @@
         <li><code>470–694 MHz</code> (UHF) — partagée avec la <b>TNT</b> : les canaux occupés localement sont à éviter (c'est le rôle de l'app). Un grand déploiement peut nécessiter une licence <b>ANFR</b>.</li>
         <li><code>823–832 MHz</code> (PMSE) — réservée aux micros, sur autorisation.</li>
         <li><code>863–865 MHz</code> — bande <b>libre</b>, sans licence (faible puissance).</li>
-        <li><code>1785–1805 MHz</code> et <code>2400–2483,5 MHz</code> — selon le matériel.</li>
+        <li><code>1785–1805 MHz</code> (1G8) — selon le matériel.</li>
       </ul>
       <p>La bande <code>694–862 MHz</code> (« dividende numérique ») est <b>interdite</b> aux micros : elle est réservée à la téléphonie mobile 4G/5G. Autorités : <b>ARCOM</b> (spectre TNT) et <b>ANFR</b> (gestion des fréquences et licences PMSE).</p>
+      <p><b>Anciens systèmes obsolètes :</b> les micros et ears vendus jadis sur ces bandes aujourd'hui interdites (typiquement <code>790–862 MHz</code>, ex-« canaux 61–69 ») sont désormais <b>obsolètes et illégaux</b> — fortement brouillés par la 4G/5G, ils doivent être remplacés.</p>
+
+      <h3>Systèmes 2,4 GHz / 5 GHz (WiFi)</h3>
+      <p>SPEED RF <b>ne gère pas</b> les micros et ears en <b>2,4 GHz et 5 GHz</b> : ces systèmes numériques choisissent <b>automatiquement leur canal</b> sur la bande WiFi et n'ont donc pas besoin d'un plan de fréquences UHF. N'ajoutez ici que vos systèmes UHF / PMSE.</p>
+
+      <h3>Salles &amp; effet cage de Faraday</h3>
+      <p>Un appareil dont la gamme tombe sur un <b>canal TNT occupé</b> peut <b>éventuellement</b> fonctionner en intérieur si la structure du bâtiment (ossature métallique, béton fortement armé) crée un <b>effet de cage de Faraday</b> qui bloque la TNT extérieure. À <b>confirmer impérativement par un scan RF sur place</b> avant le show.</p>
 
       <p class="modal-warn">⚠️ Les fréquences proposées sont des <b>disponibilités théoriques</b>. La vérification sur site (scan RF) et le respect de la réglementation (ARCOM / ANFR) restent de votre responsabilité.</p>
     </div>
@@ -1108,7 +1115,6 @@ const LEGAL_BANDS = [
   { lo: 823, hi: 832, name: '823–832 MHz (PMSE)' },
   { lo: 863, hi: 865, name: '863–865 MHz (libre, sans licence)' },
   { lo: 1785, hi: 1805, name: '1785–1805 MHz (1G8)' },
-  { lo: 2400, hi: 2483.5, name: '2400–2483,5 MHz (2,4 GHz)' },
 ];
 const legalList = () => LEGAL_BANDS.map(b => b.name).join(' · ');
 
@@ -1148,6 +1154,8 @@ modelSel.addEventListener('change', fillBands);
 
 // Message d'erreur si la plage saisie n'est pas une bande autorisée en France.
 function forbiddenBandMsg(lo, hi) {
+  if (lo >= 2400)
+    return `Plage ${lo}–${hi} MHz : les systèmes 2,4 / 5 GHz (bande WiFi) ne sont pas gérés par SPEED RF — ils choisissent leur canal automatiquement et n'ont pas besoin de plan de fréquences. Ajoutez ici uniquement vos systèmes UHF / PMSE.`;
   if (hi > 694 && lo < 822)
     return `Plage ${lo}–${hi} MHz : interdite en France. Elle tombe dans le « dividende numérique » (694–862 MHz), réservé à la TNT et à la téléphonie mobile 4G/5G — son usage par des micros est illégal et brouillé. Bandes autorisées : ${legalList()}.`;
   return `Plage ${lo}–${hi} MHz : ce n'est pas une bande autorisée pour les micros HF en France (ou elle chevauche deux bandes). Restez dans une seule bande autorisée : ${legalList()}.`;
