@@ -27,19 +27,33 @@ const KEY = 'ar$niS0und-RFSHOT-2025';
 
 const b64 = buf => Buffer.from(buf).toString('base64');
 
-function encodeCatalog(objText) {
-  // évalue le littéral (tolérant : virgules finales, etc.)
-  const obj = new Function('return (' + objText + ')')();
+// Encode un objet catalogue en `const <name>=(décodeur)();` (XOR + base64).
+function encodeCatalogNamed(name, obj) {
   const json = JSON.stringify(obj);
   const bytes = Buffer.from(json, 'utf-8');
   const key = Buffer.from(KEY, 'utf-8');
   const xored = Buffer.from(bytes.map((c, i) => c ^ key[i % key.length]));
   const blob = b64(xored), keyB64 = b64(key);
   return (
-    'const _MC=(()=>{const k=atob("' + keyB64 + '"),s=atob("' + blob + '"),' +
+    'const ' + name + '=(()=>{const k=atob("' + keyB64 + '"),s=atob("' + blob + '"),' +
     'a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i)^k.charCodeAt(i%k.length);' +
-    'return JSON.parse(new TextDecoder().decode(a));})();\nconst MIC_CATALOG=_MC;'
+    'return JSON.parse(new TextDecoder().decode(a));})();'
   );
+}
+
+// Évalue le bloc catalogue (un ou plusieurs `const NOM = {…}`) et encode chaque
+// catalogue trouvé (MIC_CATALOG, IEM_CATALOG). Tolérant : virgules finales, etc.
+function encodeCatalogs(blockText) {
+  const ev = new Function(
+    blockText + '\nreturn {' +
+    'MIC_CATALOG: typeof MIC_CATALOG!=="undefined"?MIC_CATALOG:null,' +
+    'IEM_CATALOG: typeof IEM_CATALOG!=="undefined"?IEM_CATALOG:null};'
+  )();
+  const parts = [];
+  if (ev.MIC_CATALOG) parts.push(encodeCatalogNamed('MIC_CATALOG', ev.MIC_CATALOG));
+  if (ev.IEM_CATALOG) parts.push(encodeCatalogNamed('IEM_CATALOG', ev.IEM_CATALOG));
+  if (!parts.length) throw new Error('aucun catalogue (MIC_CATALOG / IEM_CATALOG) trouvé entre les marqueurs CATALOG');
+  return parts.join('\n');
 }
 
 async function minifyEngine(engineText) {
@@ -65,11 +79,10 @@ const stripFirstLine = s => s.replace(/^[^\n]*\n/, '');               // retire 
 const main = async () => {
   let html = readFileSync(SRC, 'utf-8');
 
-  // — catalogue —
+  // — catalogues (micros + IEM) —
   const cat = between(html, '/* === CATALOG:START', '/* === CATALOG:END === */');
-  const catText = stripFirstLine(cat.afterStart)
-    .replace(/^\s*const MIC_CATALOG\s*=\s*/, '').trim().replace(/;\s*$/, '');
-  html = html.replace(cat.full, '/* catalogue encodé au build */\n' + encodeCatalog(catText));
+  const catBlock = stripFirstLine(cat.afterStart);   // tout le code entre les marqueurs
+  html = html.replace(cat.full, '/* catalogues encodés au build */\n' + encodeCatalogs(catBlock));
 
   // — moteur —
   const eng = between(html, '/* === ENGINE:START', '/* === ENGINE:END === */');

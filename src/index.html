@@ -115,8 +115,9 @@
   .mic-tag{
     font-family:var(--mono);font-weight:700;font-size:12px;
     color:var(--ink);background:#fff;border:1px solid var(--line);
-    border-radius:6px;padding:3px 7px;flex:none;
+    border-radius:6px;padding:3px 7px;flex:none;white-space:nowrap;
   }
+  .mic-tag.iem{color:#7a4ad6;border-color:#cdb6f5;background:#f6f1ff}
   .mic-desc{flex:1;min-width:0}
   .mic-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mic-band{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:1px}
@@ -260,10 +261,17 @@
   <section class="step">
     <div class="step-head">
       <div class="step-num">01</div>
-      <div class="step-title">Vos micros</div>
+      <div class="step-title">Vos micros &amp; oreillettes</div>
       <div class="step-hint">12 max</div>
     </div>
     <div class="picker">
+      <label class="field" style="grid-column:span 2">
+        <span class="field-label">Type d'appareil</span>
+        <select id="kind">
+          <option value="mic">Micro HF (émetteur)</option>
+          <option value="iem">Oreillette / Ears (IEM)</option>
+        </select>
+      </label>
       <label class="field" style="grid-column:span 2">
         <span class="field-label">Marque</span>
         <select id="brand"></select>
@@ -280,7 +288,7 @@
     <button class="add-btn" id="addMic">+ Ajouter ce micro</button>
 
     <div class="mic-list" id="micList"></div>
-    <div class="empty-mics" id="emptyMics">Aucun micro pour l'instant — choisissez un modèle et ajoutez-le.</div>
+    <div class="empty-mics" id="emptyMics">Aucune voie pour l'instant — choisissez un type (micro ou IEM), un modèle, puis ajoutez-le.</div>
     <div class="count-note" id="countNote"></div>
   </section>
 
@@ -343,896 +351,137 @@
 /* === CATALOG:START — littéral lisible ; encodé au build (voir scripts/build.mjs) === */
 const MIC_CATALOG = {
   "Shure": {
-    "Axient Digital": {
-      "sp": 350,
-      "b": [
-        [
-          "G56",
-          470,
-          636
-        ],
-        [
-          "K54 (EU ≤694)",
-          606,
-          694
-        ]
-      ]
-    },
-    "ULX-D": {
-      "sp": 350,
-      "b": [
-        [
-          "G51",
-          470,
-          534
-        ],
-        [
-          "H51",
-          534,
-          598
-        ],
-        [
-          "J51",
-          572,
-          636
-        ],
-        [
-          "K51",
-          606,
-          670
-        ],
-        [
-          "L52",
-          632,
-          696
-        ],
-        [
-          "S50 (823–832)",
-          823,
-          832
-        ],
-        [
-          "S50 (863–865)",
-          863,
-          865
-        ]
-      ]
-    },
-    "QLX-D": {
-      "sp": 350,
-      "b": [
-        [
-          "G51",
-          470,
-          534
-        ],
-        [
-          "H51",
-          534,
-          598
-        ],
-        [
-          "J51",
-          572,
-          636
-        ],
-        [
-          "K51",
-          606,
-          670
-        ],
-        [
-          "L52",
-          632,
-          696
-        ],
-        [
-          "S50 (823–832)",
-          823,
-          832
-        ]
-      ]
-    },
-    "SLX-D": {
-      "sp": 350,
-      "b": [
-        [
-          "H56",
-          518,
-          562
-        ],
-        [
-          "J53",
-          562,
-          606
-        ],
-        [
-          "K59",
-          606,
-          650
-        ],
-        [
-          "L56",
-          650,
-          694
-        ],
-        [
-          "S50 (823–832)",
-          823,
-          832
-        ]
-      ]
-    },
-    "BLX": {
-      "sp": 400,
-      "b": [
-        [
-          "H8E",
-          518,
-          542
-        ],
-        [
-          "K3E",
-          606,
-          630
-        ],
-        [
-          "S8 (823–832)",
-          823,
-          832
-        ],
-        [
-          "T11 (863–865)",
-          863,
-          865
-        ]
-      ]
-    },
-    "Microflex MX8": {
-      "sp": 350,
-      "b": [
-        [
-          "J53",
-          566,
-          636
-        ]
-      ]
-    }
+    "Axient Digital": { sp: 350, b: [["G56",470,636],["K54 (EU ≤694)",606,694]] },
+    "ULX-D": { sp: 350, b: [["G51",470,534],["H51",534,598],["J51",572,636],["K51",606,670],["L52",632,696],["S50 (823–832)",823,832],["S50 (863–865)",863,865]] },
+    "QLX-D": { sp: 350, b: [["G51",470,534],["H51",534,598],["J51",572,636],["K51",606,670],["L52",632,696],["S50 (823–832)",823,832]] },
+    "SLX-D": { sp: 350, b: [["H56",518,562],["J53",562,606],["K59",606,650],["L56",650,694],["S50 (823–832)",823,832]] },
+    "BLX": { sp: 400, b: [["H8E",518,542],["K3E",606,630],["S8 (823–832)",823,832],["T11 (863–865)",863,865]] },
+    "Microflex MX8": { sp: 350, b: [["J53",566,636]] }
   },
   "Sennheiser": {
-    "EW-DX": {
-      "sp": 600,
-      "b": [
-        [
-          "Q1-9",
-          470,
-          550
-        ],
-        [
-          "R1-9",
-          520,
-          608
-        ],
-        [
-          "S1-10",
-          606,
-          694
-        ],
-        [
-          "S2-10",
-          614,
-          694
-        ],
-        [
-          "S4-10",
-          630,
-          694
-        ],
-        [
-          "U1/5 (823–832)",
-          823,
-          832
-        ],
-        [
-          "U1/5 (863–865)",
-          863,
-          865
-        ],
-        [
-          "Y1-3 (1G8)",
-          1785,
-          1805
-        ]
-      ]
-    },
-    "EW-D": {
-      "sp": 600,
-      "b": [
-        [
-          "Q1-6",
-          470,
-          526
-        ],
-        [
-          "R1-6",
-          520,
-          576
-        ],
-        [
-          "R4-9",
-          552,
-          608
-        ],
-        [
-          "S1-7",
-          606,
-          662
-        ],
-        [
-          "S4-7",
-          630,
-          662
-        ],
-        [
-          "S7-10",
-          662,
-          694
-        ],
-        [
-          "U1/5 (823–832)",
-          823,
-          832
-        ],
-        [
-          "U1/5 (863–865)",
-          863,
-          865
-        ]
-      ]
-    },
-    "Digital 6000": {
-      "sp": 600,
-      "b": [
-        [
-          "A1-A4",
-          470,
-          558
-        ],
-        [
-          "A5-A8",
-          550,
-          638
-        ],
-        [
-          "B1-B4 (EU ≤694)",
-          630,
-          694
-        ]
-      ]
-    },
-    "SK 9000": {
-      "sp": 600,
-      "b": [
-        [
-          "A1-A4",
-          470,
-          558
-        ],
-        [
-          "A5-A8",
-          550,
-          638
-        ],
-        [
-          "B1-B4 (EU ≤694)",
-          630,
-          694
-        ]
-      ]
-    },
-    "EW100 G4": {
-      "sp": 400,
-      "b": [
-        [
-          "A1",
-          470,
-          516
-        ],
-        [
-          "A",
-          516,
-          558
-        ],
-        [
-          "AS",
-          520,
-          558
-        ],
-        [
-          "G",
-          566,
-          608
-        ],
-        [
-          "GB",
-          606,
-          648
-        ],
-        [
-          "B",
-          626,
-          668
-        ],
-        [
-          "E (823–832)",
-          823,
-          832
-        ],
-        [
-          "E (863–865)",
-          863,
-          865
-        ]
-      ]
-    },
-    "EW300/500 G4": {
-      "sp": 400,
-      "b": [
-        [
-          "AW+",
-          470,
-          558
-        ],
-        [
-          "GW1",
-          558,
-          608
-        ],
-        [
-          "GW",
-          558,
-          626
-        ],
-        [
-          "GBW",
-          606,
-          678
-        ],
-        [
-          "BW",
-          626,
-          698
-        ]
-      ]
-    },
-    "evolution G3 (ew 100/300/500)": {
-      "sp": 400,
-      "b": [
-        [
-          "A",
-          516,
-          558
-        ],
-        [
-          "G",
-          566,
-          608
-        ],
-        [
-          "GB",
-          606,
-          648
-        ],
-        [
-          "B",
-          626,
-          668
-        ],
-        [
-          "E (863–865)",
-          863,
-          865
-        ]
-      ]
-    },
-    "evolution G2 (ew 100/300/500)": {
-      "sp": 400,
-      "b": [
-        [
-          "A",
-          518,
-          554
-        ],
-        [
-          "G",
-          566,
-          608
-        ],
-        [
-          "B",
-          626,
-          662
-        ],
-        [
-          "E (863–865)",
-          863,
-          865
-        ]
-      ]
-    },
-    "2000 Series": {
-      "sp": 400,
-      "b": [
-        [
-          "AW",
-          516,
-          558
-        ],
-        [
-          "GW",
-          558,
-          626
-        ],
-        [
-          "BW",
-          626,
-          698
-        ]
-      ]
-    },
-    "XSW 1/2": {
-      "sp": 400,
-      "b": [
-        [
-          "A",
-          548,
-          572
-        ],
-        [
-          "B",
-          614,
-          638
-        ],
-        [
-          "E (823–832)",
-          823,
-          832
-        ],
-        [
-          "E (863–865)",
-          863,
-          865
-        ]
-      ]
-    }
+    "EW-DX": { sp: 600, b: [["Q1-9",470,550],["R1-9",520,608],["S1-10",606,694],["S2-10",614,694],["S4-10",630,694],["U1/5 (823–832)",823,832],["U1/5 (863–865)",863,865],["Y1-3 (1G8)",1785,1805]] },
+    "EW-D": { sp: 600, b: [["Q1-6",470,526],["R1-6",520,576],["R4-9",552,608],["S1-7",606,662],["S4-7",630,662],["S7-10",662,694],["U1/5 (823–832)",823,832],["U1/5 (863–865)",863,865]] },
+    "Digital 6000": { sp: 600, b: [["A1-A4",470,558],["A5-A8",550,638],["B1-B4 (EU ≤694)",630,694]] },
+    "SK 9000": { sp: 600, b: [["A1-A4",470,558],["A5-A8",550,638],["B1-B4 (EU ≤694)",630,694]] },
+    "SK 5212-II (film 3000/5000)": { sp: 400, st: 5, b: [["L (470–638)",470,638],["N (614–694, ≤694 FR)",614,694]] },
+    "EW100 G4": { sp: 400, b: [["A1",470,516],["A",516,558],["AS",520,558],["G",566,608],["GB",606,648],["B",626,668],["E (823–832)",823,832],["E (863–865)",863,865]] },
+    "EW300/500 G4": { sp: 400, b: [["AW+",470,558],["GW1",558,608],["GW",558,626],["GBW",606,678],["BW",626,698]] },
+    "evolution G3 (ew 100/300/500)": { sp: 400, b: [["A",516,558],["G",566,608],["GB",606,648],["B",626,668],["E (863–865)",863,865]] },
+    "evolution G2 (ew 100/300/500)": { sp: 400, b: [["A",518,554],["G",566,608],["B",626,662],["E (863–865)",863,865]] },
+    "2000 Series": { sp: 400, b: [["AW",516,558],["GW",558,626],["BW",626,698]] },
+    "XSW 1/2": { sp: 400, b: [["A",548,572],["B",614,638],["E (823–832)",823,832],["E (863–865)",863,865]] }
   },
   "Sony": {
-    "UWP-D": {
-      "sp": 400,
-      "b": [
-        [
-          "CE21",
-          470,
-          542
-        ],
-        [
-          "CE33",
-          566,
-          633
-        ],
-        [
-          "CE42",
-          638,
-          694
-        ]
-      ]
-    },
-    "DWX (numérique)": {
-      "sp": 400,
-      "b": [
-        [
-          "470–694 (selon version)",
-          470,
-          694
-        ]
-      ]
-    }
+    "UWP-D": { sp: 400, b: [["CE21",470,542],["CE33",566,633],["CE42",638,694]] },
+    "DWX (numérique)": { sp: 400, b: [["470–694 (selon version)",470,694]] }
   },
   "Audio-Technica": {
-    "5000 Series (num.)": {
-      "sp": 350,
-      "b": [
-        [
-          "DE2",
-          470,
-          530
-        ],
-        [
-          "EG2",
-          560,
-          596
-        ]
-      ]
-    },
-    "3000 Series (ana.)": {
-      "sp": 400,
-      "b": [
-        [
-          "DE2",
-          470,
-          530
-        ],
-        [
-          "EG2",
-          560,
-          596
-        ],
-        [
-          "GG3",
-          626,
-          662
-        ]
-      ]
-    }
+    "5000 Series (num.)": { sp: 350, b: [["DE2",470,530],["EG2",560,596]] },
+    "3000 Series (ana.)": { sp: 400, b: [["DE2",470,530],["EG2",560,596],["GG3",626,662]] }
   },
   "Wisycom": {
-    "MTP40S / MTP41S": {
-      "sp": 400,
-      "b": [
-        [
-          "470–694",
-          470,
-          694
-        ]
-      ]
-    },
-    "MTP60 / MTP61 (large bande)": {
-      "sp": 400,
-      "b": [
-        [
-          "470–694 (UHF)",
-          470,
-          694
-        ],
-        [
-          "823–832 (PMSE)",
-          823,
-          832
-        ],
-        [
-          "863–865 (libre)",
-          863,
-          865
-        ],
-        [
-          "1785–1805 (1G8)",
-          1785,
-          1805
-        ]
-      ]
-    },
-    "MCR42 / MCR54": {
-      "sp": 400,
-      "b": [
-        [
-          "470–694",
-          470,
-          694
-        ],
-        [
-          "823–832 (PMSE)",
-          823,
-          832
-        ]
-      ]
-    },
-    "MPR50 / MPR52": {
-      "sp": 400,
-      "b": [
-        [
-          "470–694",
-          470,
-          694
-        ],
-        [
-          "823–832 (PMSE)",
-          823,
-          832
-        ]
-      ]
-    }
+    "MTP40S / MTP41S": { sp: 400, b: [["470–694",470,694]] },
+    "MTP60 / MTP61 (large bande)": { sp: 400, b: [["470–694 (UHF)",470,694],["823–832 (PMSE)",823,832],["863–865 (libre)",863,865],["1785–1805 (1G8)",1785,1805]] },
+    "MCR42 / MCR54": { sp: 400, b: [["470–694",470,694],["823–832 (PMSE)",823,832]] },
+    "MPR50 / MPR52": { sp: 400, b: [["470–694",470,694],["823–832 (PMSE)",823,832]] }
   },
   "Lectrosonics": {
-    "Digital Hybrid (SMx, LT)": {
-      "sp": 300,
-      "b": [
-        [
-          "A1",
-          470,
-          537
-        ],
-        [
-          "B1",
-          537,
-          614
-        ],
-        [
-          "C1",
-          614,
-          691
-        ]
-      ]
-    },
-    "D Squared (DSQD/DPR)": {
-      "sp": 300,
-      "b": [
-        [
-          "470–608",
-          470,
-          608
-        ],
-        [
-          "614–694",
-          614,
-          694
-        ]
-      ]
-    },
-    "DCR / M2T": {
-      "sp": 300,
-      "b": [
-        [
-          "A1",
-          470,
-          614
-        ]
-      ]
-    }
+    "Digital Hybrid (SMx, LT)": { sp: 300, b: [["A1",470,537],["B1",537,614],["C1",614,691]] },
+    "D Squared (DSQD/DPR)": { sp: 300, b: [["470–608",470,608],["614–694",614,694]] },
+    "DCR / M2T": { sp: 300, b: [["A1",470,614]] }
   },
   "Sound Devices": {
-    "A20-Mini / A20-TX": {
-      "sp": 300,
-      "b": [
-        [
-          "A1 (large 470–694)",
-          470,
-          694
-        ]
-      ]
-    }
+    "A20-Mini / A20-TX": { sp: 300, b: [["A1 (large 470–694)",470,694]] }
   },
   "Zaxcom": {
-    "ZMT4 / TRXLT": {
-      "sp": 300,
-      "b": [
-        [
-          "470–694",
-          470,
-          694
-        ]
-      ]
-    }
+    "ZMT4 / TRXLT": { sp: 300, b: [["470–694",470,694]] }
+  },
+  "Audio Ltd": {
+    "A10-TX": { sp: 300, b: [["A (470–548)",470,548],["B (518–608)",518,608],["C (594–694)",594,694],["D (534–629,8)",534,629.8]] }
   },
   "AKG": {
-    "DMS800 (num.)": {
-      "sp": 400,
-      "b": [
-        [
-          "BD1 (EU ≤694)",
-          548,
-          694
-        ]
-      ]
-    },
-    "WMS470 (ana.)": {
-      "sp": 400,
-      "b": [
-        [
-          "B7",
-          500,
-          531
-        ],
-        [
-          "B8",
-          570,
-          601
-        ],
-        [
-          "B9",
-          600,
-          631
-        ],
-        [
-          "B1",
-          650,
-          680
-        ]
-      ]
-    },
-    "WMS40 Mini / Mini2": {
-      "sp": 400,
-      "b": [
-        [
-          "ISM 863–865",
-          863,
-          865
-        ]
-      ]
-    }
+    "DMS800 (num.)": { sp: 400, b: [["BD1 (EU ≤694)",548,694]] },
+    "WMS470 (ana.)": { sp: 400, b: [["B7",500,531],["B8",570,601],["B9",600,631],["B1",650,680]] },
+    "WMS40 Mini / Mini2": { sp: 400, b: [["ISM 863–865",863,865]] }
   },
   "Mipro": {
-    "ACT-5xx / ACT-7xx": {
-      "sp": 400,
-      "b": [
-        [
-          "470–694 (selon version)",
-          470,
-          694
-        ]
-      ]
-    }
+    "ACT-5xx / ACT-7xx": { sp: 400, b: [["470–694 (selon version)",470,694]] }
   },
   "beyerdynamic": {
-    "TG 1000 (num.)": {
-      "sp": 400,
-      "b": [
-        [
-          "470–694 (TG1000 ≤789)",
-          470,
-          694
-        ]
-      ]
-    }
+    "TG 1000 (num.)": { sp: 400, b: [["470–694 (TG1000 ≤789)",470,694]] }
   },
   "the t.bone": {
-    "freeU 823 / Twin 823": {
-      "sp": 400,
-      "b": [
-        [
-          "823–832 (PMSE)",
-          823,
-          832
-        ]
-      ]
-    },
-    "freeU 863 / Twin 863": {
-      "sp": 400,
-      "b": [
-        [
-          "863–865 (libre)",
-          863,
-          865
-        ]
-      ]
-    },
-    "free solo 590": {
-      "sp": 400,
-      "b": [
-        [
-          "596–620",
-          596,
-          620
-        ]
-      ]
-    },
-    "free solo 660": {
-      "sp": 400,
-      "b": [
-        [
-          "665–679",
-          665,
-          679
-        ]
-      ]
-    },
-    "free solo 823": {
-      "sp": 400,
-      "b": [
-        [
-          "823–832 (PMSE)",
-          823,
-          832
-        ]
-      ]
-    },
-    "free solo 863": {
-      "sp": 400,
-      "b": [
-        [
-          "863–865 (libre)",
-          863,
-          865
-        ]
-      ]
-    }
+    "freeU 823 / Twin 823": { sp: 400, b: [["823–832 (PMSE)",823,832]] },
+    "freeU 863 / Twin 863": { sp: 400, b: [["863–865 (libre)",863,865]] },
+    "free solo 590": { sp: 400, b: [["596–620",596,620]] },
+    "free solo 660": { sp: 400, b: [["665–679",665,679]] },
+    "free solo 823": { sp: 400, b: [["823–832 (PMSE)",823,832]] },
+    "free solo 863": { sp: 400, b: [["863–865 (libre)",863,865]] },
+    "TWS / TWS 16 (823)": { sp: 400, b: [["823–832 (PMSE)",823,832]] },
+    "TWS / TWS 16 (863)": { sp: 400, b: [["863–865 (libre)",863,865]] }
   },
-  "Audio-Technica (2.4 GHz)": {
-    "System 10 Pro": {
-      "sp": 1000,
-      "b": [
-        [
-          "2.4 GHz",
-          2400,
-          2483
-        ]
-      ]
-    }
+  "LD Systems": {
+    "U300 (ana.)": { sp: 400, b: [["470–490",470,490],["514–542",514,542],["584–608",584,608],["655–679",655,679],["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] },
+    "U500 (ana.)": { sp: 400, b: [["U505 (584–608)",584,608],["U506 (655–679)",655,679],["U508 (823–832)",823,832],["U508 (863–865)",863,865]] },
+    "WS 1000 G2 (ana.)": { sp: 400, b: [["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] }
   },
-  "Røde": {
-    "Wireless GO II": {
-      "sp": 1000,
-      "b": [
-        [
-          "2.4 GHz",
-          2400,
-          2483
-        ]
-      ]
-    },
-    "Wireless ME": {
-      "sp": 1000,
-      "b": [
-        [
-          "2.4 GHz",
-          2400,
-          2483
-        ]
-      ]
-    }
-  },
-  "DJI": {
-    "Mic 2": {
-      "sp": 2000,
-      "b": [
-        [
-          "2.4 GHz",
-          2400,
-          2483
-        ]
-      ]
-    }
+  "Sirus": {
+    "Quad 470": { sp: 400, b: [["470–526",470,526]] },
+    "Quad 823": { sp: 400, b: [["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] }
   },
   "Autre / inconnu": {
-    "Micro UHF (470–694)": {
-      "sp": 400,
-      "b": [
-        [
-          "UHF large 470–694",
-          470,
-          694
-        ]
-      ]
-    },
-    "Micro bande haute (606–694)": {
-      "sp": 400,
-      "b": [
-        [
-          "606–694",
-          606,
-          694
-        ]
-      ]
-    },
-    "Micro PMSE (823–832)": {
-      "sp": 400,
-      "b": [
-        [
-          "823–832",
-          823,
-          832
-        ]
-      ]
-    },
-    "Micro 863–865 (libre, sans licence)": {
-      "sp": 400,
-      "b": [
-        [
-          "863–865",
-          863,
-          865
-        ]
-      ]
-    }
+    "Micro UHF large (470–694)": { sp: 400, b: [["UHF 470–694",470,694]] },
+    "Micro bande haute (606–694)": { sp: 400, b: [["606–694",606,694]] },
+    "Micro PMSE (823–832)": { sp: 400, b: [["823–832 (PMSE)",823,832]] },
+    "Micro 863–865 (libre, sans licence)": { sp: 400, b: [["863–865 (libre)",863,865]] }
+  }
+};
+
+const IEM_CATALOG = {
+  "Shure": {
+    "PSM300": { sp: 400, b: [["H20",518,578],["K12",606,630],["S8 (823–832)",823,832],["T11 (863–865)",863,865]] },
+    "PSM900": { sp: 400, b: [["G7E",506,542],["K1E",596,632],["L6E",656,692]] },
+    "PSM1000": { sp: 400, b: [["G10",470,542],["J8",554,626],["K10",596,668],["L8",626,698]] }
+  },
+  "Sennheiser": {
+    "EW IEM G4": { sp: 400, b: [["A1",470,516],["A",516,558],["AS",520,558],["G",566,608],["GB",606,648],["B",626,668],["E (823–832)",823,832],["E (863–865)",863,865]] },
+    "ew IEM G3 (300/500)": { sp: 400, b: [["A",516,558],["G",566,608],["GB",606,648],["B",626,668],["E (863–865)",863,865]] },
+    "ew IEM G2 (300/500)": { sp: 400, b: [["A",518,554],["G",566,608],["B",626,662],["E (863–865)",863,865]] },
+    "XSW IEM": { sp: 400, b: [["A",476,500],["B",572,596],["C",662,686],["E (823–832)",823,832],["E (863–865)",863,865]] },
+    "2000 IEM": { sp: 400, b: [["AW",516,558],["GW",558,626],["BW",626,698]] }
+  },
+  "Lectrosonics": {
+    "R1a / Duet": { sp: 300, b: [["A1",470,537],["B1",537,614],["C1",614,691]] }
+  },
+  "Wisycom": {
+    "MPR30 IFB": { sp: 400, b: [["470–694",470,694]] }
+  },
+  "LD Systems": {
+    "U300 IEM (ana.)": { sp: 400, b: [["470–490",470,490],["514–542",514,542],["584–608",584,608],["655–679",655,679],["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] },
+    "U500 IEM / MEI 1000 G2 (ana.)": { sp: 400, b: [["584–608",584,608],["655–679",655,679],["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] },
+    "MEI 100 G2": { sp: 400, b: [["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] }
+  },
+  "the t.bone": {
+    "IEM 75 (863)": { sp: 400, b: [["863–865 (libre)",863,865]] },
+    "IEM 100 (823)": { sp: 400, b: [["823–832 (PMSE)",823,832]] },
+    "IEM 100 (863)": { sp: 400, b: [["863–865 (libre)",863,865]] },
+    "IEM 150": { sp: 400, b: [["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] }
+  },
+  "Behringer": {
+    "UL 1000G2 (EU)": { sp: 400, b: [["823–832 (PMSE)",823,832],["863–865 (libre)",863,865]] }
+  },
+  "Audio-Technica": {
+    "ATW-3255 (3000 Series)": { sp: 400, b: [["DF2",470.125,607.875],["EG2 (≤694 FR)",580,694]] }
+  },
+  "Prodipe": {
+    "IEM 5120": { sp: 400, b: [["630–680",630,680]] },
+    "IEM 7120": { sp: 400, b: [["626–668",626,668]] }
+  },
+  "Autre / inconnu": {
+    "Ear UHF large (470–694)": { sp: 400, b: [["UHF 470–694",470,694]] },
+    "Ear bande haute (606–694)": { sp: 400, b: [["606–694",606,694]] },
+    "Ear PMSE (823–832)": { sp: 400, b: [["823–832 (PMSE)",823,832]] },
+    "Ear 863–865 (libre, sans licence)": { sp: 400, b: [["863–865 (libre)",863,865]] }
   }
 };
 /* === CATALOG:END === */
@@ -1747,48 +996,53 @@ const mics = [];               // { name, brand, model, band, fmin, fmax, spacin
 let micCounter = 0;
 
 const $ = id => document.getElementById(id);
-const brandSel = $('brand'), modelSel = $('model'), bandSel = $('band');
+const kindSel = $('kind'), brandSel = $('brand'), modelSel = $('model'), bandSel = $('band');
+// catalogue actif selon le type choisi (micro HF ou oreillette IEM)
+const currentCatalog = () => (kindSel.value === 'iem' ? IEM_CATALOG : MIC_CATALOG);
 
 // — peuplement des sélecteurs —
 function fillBrands() {
   brandSel.innerHTML = '<option value="">— Choisir —</option>' +
-    Object.keys(MIC_CATALOG).map(b => `<option>${b}</option>`).join('');
+    Object.keys(currentCatalog()).map(b => `<option>${b}</option>`).join('');
 }
 function fillModels() {
   const b = brandSel.value;
   if (!b) { modelSel.innerHTML = '<option value="">—</option>'; modelSel.disabled = true; fillBands(); return; }
   modelSel.disabled = false;
-  modelSel.innerHTML = Object.keys(MIC_CATALOG[b]).map(m => `<option>${m}</option>`).join('');
+  modelSel.innerHTML = Object.keys(currentCatalog()[b]).map(m => `<option>${m}</option>`).join('');
   fillBands();
 }
 function fillBands() {
   const b = brandSel.value, m = modelSel.value;
   if (!b || !m) { bandSel.innerHTML = '<option value="">—</option>'; bandSel.disabled = true; return; }
   bandSel.disabled = false;
-  bandSel.innerHTML = MIC_CATALOG[b][m].b
+  bandSel.innerHTML = currentCatalog()[b][m].b
     .map((bd, i) => `<option value="${i}">${bd[0]} · ${bd[1]}–${bd[2]} MHz</option>`).join('');
 }
+kindSel.addEventListener('change', () => { fillBrands(); fillModels(); refreshAddLabel(); });
 brandSel.addEventListener('change', fillModels);
 modelSel.addEventListener('change', fillBands);
 
 // — ajout / liste —
 $('addMic').addEventListener('click', () => {
+  const cat = currentCatalog(), kind = kindSel.value === 'iem' ? 'iem' : 'mic';
   const b = brandSel.value, m = modelSel.value, bi = bandSel.value;
   if (!b || !m || bi === '') return;
   if (mics.length >= MAX_MICS) return;
-  const [band, fmin, fmax] = MIC_CATALOG[b][m].b[+bi];
+  const [band, fmin, fmax] = cat[b][m].b[+bi];
   micCounter++;
-  mics.push({ name: 'Micro ' + (mics.length + 1), brand: b, model: m, band, fmin, fmax, spacing: MIC_CATALOG[b][m].sp });
+  mics.push({ name: '', kind, brand: b, model: m, band, fmin, fmax, spacing: cat[b][m].sp, tuneStep: cat[b][m].st || 25 });
   renderMics();
 });
 
 function renderMics() {
-  // renomme proprement Micro 1..N
-  mics.forEach((mm, i) => mm.name = 'Micro ' + (i + 1));
+  // renomme proprement Micro 1..N / IEM 1..N (numérotés par type)
+  let nMic = 0, nIem = 0;
+  mics.forEach(mm => { mm.name = mm.kind === 'iem' ? 'IEM ' + (++nIem) : 'Micro ' + (++nMic); });
   const list = $('micList');
   list.innerHTML = mics.map((mm, i) => `
     <div class="mic-item">
-      <span class="mic-tag">${mm.name}</span>
+      <span class="mic-tag${mm.kind === 'iem' ? ' iem' : ''}">${mm.name}</span>
       <div class="mic-desc">
         <div class="mic-name">${mm.brand} ${mm.model}</div>
         <div class="mic-band">${mm.band} · ${mm.fmin}–${mm.fmax} MHz · ${mm.spacing} kHz</div>
@@ -1799,12 +1053,18 @@ function renderMics() {
     btn.addEventListener('click', () => { mics.splice(+btn.dataset.i, 1); renderMics(); }));
   $('emptyMics').style.display = mics.length ? 'none' : 'block';
   const note = $('countNote');
-  note.textContent = mics.length ? `${mics.length} / ${MAX_MICS} micros` : '';
+  note.textContent = mics.length ? `${mics.length} / ${MAX_MICS} voies` : '';
   note.classList.toggle('full', mics.length >= MAX_MICS);
   $('addMic').disabled = mics.length >= MAX_MICS;
-  if (mics.length >= MAX_MICS) $('addMic').textContent = 'Limite de 12 micros atteinte';
-  else $('addMic').textContent = '+ Ajouter ce micro';
+  refreshAddLabel();
   refreshGen();
+}
+
+// libellé du bouton d'ajout (selon le type sélectionné et la limite atteinte)
+function refreshAddLabel() {
+  const btn = $('addMic');
+  if (mics.length >= MAX_MICS) { btn.textContent = 'Limite de ' + MAX_MICS + ' voies atteinte'; return; }
+  btn.textContent = kindSel.value === 'iem' ? '+ Ajouter cette oreillette' : '+ Ajouter ce micro';
 }
 
 // — position —
@@ -1987,7 +1247,7 @@ function renderResults(plan, channels, label, warn, la, lo) {
         <div class="summary-loc">${label}</div>
       </div>
       <div class="summary-stats">
-        <div class="stat"><div class="v ${okAll ? 'good' : 'bad'}">${stats.nOK}/${mics.length}</div><div class="l">micros placés</div></div>
+        <div class="stat"><div class="v ${okAll ? 'good' : 'bad'}">${stats.nOK}/${mics.length}</div><div class="l">voies placées</div></div>
         <div class="stat"><div class="v good">0</div><div class="l">interférence directe</div></div>
         <div class="stat"><div class="v">${stats.res3}</div><div class="l">produits résiduels</div></div>
       </div>

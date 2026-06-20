@@ -31,7 +31,8 @@ speedrf/
 Le build s'appuie sur deux zones balisées par des commentaires — **ne pas les supprimer** :
 
 - `/* === CATALOG:START … */ … /* === CATALOG:END === */`
-  Le catalogue micros (marques, modèles, gammes). Au build, il est encodé
+  Les catalogues `MIC_CATALOG` (micros HF) et `IEM_CATALOG` (oreillettes / ears)
+  — marques, modèles, gammes. Au build, **chaque** catalogue est encodé
   (XOR + base64) pour ne pas apparaître en clair dans la version publiée.
 - `/* === ENGINE:START … */ … /* === ENGINE:END === */`
   Le moteur `generatePlan(...)`. Au build, il est minifié et « manglé » (terser) :
