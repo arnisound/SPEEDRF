@@ -35,8 +35,9 @@ Le build s'appuie sur deux zones balisées par des commentaires — **ne pas les
   — marques, modèles, gammes. Au build, **chaque** catalogue est encodé
   (XOR + base64) pour ne pas apparaître en clair dans la version publiée.
 - `/* === ENGINE:START … */ … /* === ENGINE:END === */`
-  Le moteur `generatePlan(...)`. Au build, il est minifié et « manglé » (terser) :
-  seul `generatePlan` reste exposé, les rouages internes deviennent illisibles.
+  Le moteur `generatePlan(...)`. Au build, il est minifié et « manglé » (terser),
+  **puis encodé (XOR + base64)** et décodé/évalué au démarrage : il n'apparaît plus
+  en clair dans l'onglet « Sources » du navigateur. Seul `generatePlan` reste exposé.
 
 Pour ajouter un micro, modifier une gamme, etc. : édite le littéral
 `MIC_CATALOG` entre les marqueurs CATALOG. Pour toucher à l'algo : entre ENGINE.

@@ -2,8 +2,10 @@
 // =============================================================================
 // - Le CATALOGUE (entre les marqueurs CATALOG:START/END) est encodé (XOR + base64)
 //   et remplacé par un décodeur qui le reconstruit en mémoire au démarrage.
-// - Le MOTEUR (entre ENGINE:START/END) est enfermé dans une IIFE puis minifié et
-//   « manglé » avec terser (noms internes réduits). Seul generatePlan reste exposé.
+// - Le MOTEUR (entre ENGINE:START/END) est enfermé dans une IIFE, minifié et
+//   « manglé » avec terser (noms internes réduits), puis encodé (XOR + base64)
+//   et décodé/évalué au démarrage : il n'apparaît plus en clair dans les Sources.
+//   Seul generatePlan reste exposé.
 //
 //   npm install        (installe terser)
 //   npm run build      (=> dist/index.html, prêt à déployer sur Cloudflare Pages)
@@ -62,11 +64,29 @@ async function minifyEngine(engineText) {
     'var generatePlan=(function(){\n' +
     engineText.replace('function generatePlan(mics, channels, opts = {})', 'function _gp(mics, channels, opts = {})') +
     '\nreturn _gp;})();';
-  const res = await minify(wrapped, { compress: true, mangle: true }); // pas de toplevel : generatePlan reste global
+  const res = await minify(wrapped, {
+    compress: { passes: 3, drop_console: true, drop_debugger: true, pure_getters: true, booleans_as_integers: true },
+    mangle: true,                       // pas de toplevel : le nom generatePlan reste pour l'eval
+    format: { comments: false, ascii_only: true },
+  });
   if (res.error) throw res.error;
   let code = res.code.trim();
   if (!code.endsWith(';')) code += ';';
   return code;
+}
+
+// Encode le moteur minifié en blob (XOR + base64), décodé puis évalué au
+// chargement via un eval indirect — defines generatePlan dans le scope global.
+function encodeEngine(code) {
+  const bytes = Buffer.from(code, 'utf-8');
+  const key = Buffer.from(KEY, 'utf-8');
+  const xored = Buffer.from(bytes.map((c, i) => c ^ key[i % key.length]));
+  const blob = b64(xored), keyB64 = b64(key);
+  return (
+    '(function(){var k=atob("' + keyB64 + '"),s=atob("' + blob + '"),' +
+    'a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i)^k.charCodeAt(i%k.length);' +
+    '(0,eval)(new TextDecoder().decode(a));})();'
+  );
 }
 
 const between = (s, a, b) => {
@@ -84,10 +104,11 @@ const main = async () => {
   const catBlock = stripFirstLine(cat.afterStart);   // tout le code entre les marqueurs
   html = html.replace(cat.full, '/* catalogues encodés au build */\n' + encodeCatalogs(catBlock));
 
-  // — moteur —
+  // — moteur (minifié puis encodé) —
   const eng = between(html, '/* === ENGINE:START', '/* === ENGINE:END === */');
   const engText = stripFirstLine(eng.afterStart).trim();
-  html = html.replace(eng.full, '/* moteur minifié au build */\n' + await minifyEngine(engText));
+  const engMin = await minifyEngine(engText);
+  html = html.replace(eng.full, '/* moteur encodé au build */\n' + encodeEngine(engMin));
 
   mkdirSync(OUT_DIR, { recursive: true });
   writeFileSync(OUT, html, 'utf-8');
