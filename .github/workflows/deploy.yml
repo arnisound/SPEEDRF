@@ -39,6 +39,8 @@ jobs:
 
       - name: Configurer Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true   # active GitHub Pages (mode « GitHub Actions ») si pas déjà fait
 
       - name: Uploader l'artifact (dist/)
         uses: actions/upload-pages-artifact@v3
