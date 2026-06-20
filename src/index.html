@@ -109,6 +109,7 @@
   select:focus,input:focus{outline:2px solid var(--signal);outline-offset:1px;border-color:var(--signal)}
   select:disabled{opacity:.5}
   .custom-range{margin-top:8px}
+  .custom-range[hidden]{display:none}   /* l'emporte sur .picker{display:grid} */
   .custom-hint{font-size:11.5px;color:var(--faint);line-height:1.4}
   .custom-err{font-size:12.5px;line-height:1.4;color:var(--danger);background:#fdf1f1;border:1px solid #f0cccc;border-radius:9px;padding:9px 11px}
 
