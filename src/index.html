@@ -87,6 +87,11 @@
   .has-tip .tip b{color:#fff}
   .has-tip:hover .tip,.has-tip:focus .tip,.has-tip:focus-within .tip{opacity:1;visibility:visible;transform:none}
   .has-tip .tip::after{content:"";position:absolute;bottom:100%;right:14px;border:6px solid transparent;border-bottom-color:var(--ink)}
+  .has-tip.tip-left .tip{right:auto;left:0}
+  .has-tip.tip-left .tip::after{right:auto;left:14px}
+  /* déclencheur d'infobulle « cage de Faraday » dans une carte bloquée */
+  .why-tip{display:inline-block;margin-top:5px;font-family:var(--body);font-size:11.5px;font-weight:600;
+    color:var(--danger);border-bottom:1px dotted var(--danger);cursor:help}
 
   /* ── Sélecteurs micro ── */
   .picker{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -94,7 +99,7 @@
   .picker .row2{display:contents}
   label.field{display:flex;flex-direction:column;gap:5px}
   .field-label{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-weight:600}
-  select,input[type=text]{
+  select,input[type=text],input[type=number]{
     font-family:var(--body);font-size:14px;color:var(--ink);
     background:var(--free);
     border:1px solid var(--line);
@@ -103,6 +108,9 @@
   }
   select:focus,input:focus{outline:2px solid var(--signal);outline-offset:1px;border-color:var(--signal)}
   select:disabled{opacity:.5}
+  .custom-range{margin-top:8px}
+  .custom-hint{font-size:11.5px;color:var(--faint);line-height:1.4}
+  .custom-err{font-size:12.5px;line-height:1.4;color:var(--danger);background:#fdf1f1;border:1px solid #f0cccc;border-radius:9px;padding:9px 11px}
 
   .add-btn{
     margin-top:10px;width:100%;
@@ -307,6 +315,18 @@
         <span class="field-label">Gamme</span>
         <select id="band" disabled></select>
       </label>
+    </div>
+    <div class="picker custom-range" id="customRange" hidden>
+      <label class="field">
+        <span class="field-label">Fréq. min (MHz)</span>
+        <input id="cmin" type="number" inputmode="decimal" step="0.025" placeholder="ex. 470">
+      </label>
+      <label class="field">
+        <span class="field-label">Fréq. max (MHz)</span>
+        <input id="cmax" type="number" inputmode="decimal" step="0.025" placeholder="ex. 608">
+      </label>
+      <div class="custom-hint" style="grid-column:span 2">Reportez la plage d'accord indiquée sur l'appareil. Bandes autorisées en France : 470–694, 823–832, 863–865, 1785–1805, 2400–2483,5 MHz.</div>
+      <div class="custom-err" id="customErr" style="grid-column:span 2" hidden></div>
     </div>
     <button class="add-btn" id="addMic">+ Ajouter ce micro</button>
 
@@ -1022,10 +1042,22 @@ const $ = id => document.getElementById(id);
 const kindSel = $('kind'), brandSel = $('brand'), modelSel = $('model'), bandSel = $('band');
 // catalogue actif selon le type choisi (micro HF ou ears monitor IEM)
 const currentCatalog = () => (kindSel.value === 'iem' ? IEM_CATALOG : MIC_CATALOG);
+const CUSTOM = '__custom__';
+
+// Bandes légalement exploitables pour les micros HF en France (validation saisie manuelle).
+const LEGAL_BANDS = [
+  { lo: 470, hi: 694, name: '470–694 MHz (UHF)' },
+  { lo: 823, hi: 832, name: '823–832 MHz (PMSE)' },
+  { lo: 863, hi: 865, name: '863–865 MHz (libre, sans licence)' },
+  { lo: 1785, hi: 1805, name: '1785–1805 MHz (1G8)' },
+  { lo: 2400, hi: 2483.5, name: '2400–2483,5 MHz (2,4 GHz)' },
+];
+const legalList = () => LEGAL_BANDS.map(b => b.name).join(' · ');
 
 // — peuplement des sélecteurs —
 function fillBrands() {
   brandSel.innerHTML = '<option value="">— Choisir —</option>' +
+    `<option value="${CUSTOM}">➕ Système personnalisé (gamme manuelle)</option>` +
     Object.keys(currentCatalog()).map(b => `<option>${b}</option>`).join('');
 }
 function fillModels() {
@@ -1042,20 +1074,54 @@ function fillBands() {
   bandSel.innerHTML = currentCatalog()[b][m].b
     .map((bd, i) => `<option value="${i}">${bd[0]} · ${bd[1]}–${bd[2]} MHz</option>`).join('');
 }
-kindSel.addEventListener('change', () => { fillBrands(); fillModels(); refreshAddLabel(); });
-brandSel.addEventListener('change', fillModels);
+// bascule entre catalogue et saisie manuelle selon la marque choisie
+function onBrandChange() {
+  const custom = brandSel.value === CUSTOM;
+  modelSel.closest('.field').style.display = custom ? 'none' : '';
+  bandSel.closest('.field').style.display = custom ? 'none' : '';
+  $('customRange').hidden = !custom;
+  $('customErr').hidden = true;
+  if (!custom) fillModels();
+  refreshAddLabel();
+}
+kindSel.addEventListener('change', () => { fillBrands(); onBrandChange(); });
+brandSel.addEventListener('change', onBrandChange);
 modelSel.addEventListener('change', fillBands);
 
+// Message d'erreur si la plage saisie n'est pas une bande autorisée en France.
+function forbiddenBandMsg(lo, hi) {
+  if (hi > 694 && lo < 822)
+    return `Plage ${lo}–${hi} MHz : interdite en France. Elle tombe dans le « dividende numérique » (694–862 MHz), réservé à la TNT et à la téléphonie mobile 4G/5G — son usage par des micros est illégal et brouillé. Bandes autorisées : ${legalList()}.`;
+  return `Plage ${lo}–${hi} MHz : ce n'est pas une bande autorisée pour les micros HF en France (ou elle chevauche deux bandes). Restez dans une seule bande autorisée : ${legalList()}.`;
+}
+
 // — ajout / liste —
-$('addMic').addEventListener('click', () => {
+function addFromCatalog() {
   const cat = currentCatalog(), kind = kindSel.value === 'iem' ? 'iem' : 'mic';
   const b = brandSel.value, m = modelSel.value, bi = bandSel.value;
   if (!b || !m || bi === '') return;
-  if (mics.length >= MAX_MICS) return;
   const [band, fmin, fmax] = cat[b][m].b[+bi];
   micCounter++;
   mics.push({ name: '', kind, brand: b, model: m, band, fmin, fmax, spacing: cat[b][m].sp, tuneStep: cat[b][m].st || 25 });
   renderMics();
+}
+function addCustom() {
+  const err = $('customErr'), show = msg => { err.textContent = msg; err.hidden = false; };
+  const lo = parseFloat(String($('cmin').value).replace(',', '.'));
+  const hi = parseFloat(String($('cmax').value).replace(',', '.'));
+  if (!isFinite(lo) || !isFinite(hi)) return show('Indiquez les deux fréquences (min et max) en MHz.');
+  if (hi - lo < 0.2) return show('La fréquence max doit dépasser la min d’au moins 0,2 MHz.');
+  const band = LEGAL_BANDS.find(bd => lo >= bd.lo - 1e-9 && hi <= bd.hi + 1e-9);
+  if (!band) return show(forbiddenBandMsg(lo, hi));           // bande interdite / hors bande
+  const kind = kindSel.value === 'iem' ? 'iem' : 'mic';
+  micCounter++;
+  mics.push({ name: '', kind, custom: true, brand: 'Système personnalisé', model: '', band: 'Gamme manuelle', fmin: lo, fmax: hi, spacing: 400, tuneStep: 25 });
+  $('cmin').value = ''; $('cmax').value = ''; err.hidden = true;
+  renderMics();
+}
+$('addMic').addEventListener('click', () => {
+  if (mics.length >= MAX_MICS) return;
+  if (brandSel.value === CUSTOM) addCustom(); else addFromCatalog();
 });
 
 function renderMics() {
@@ -1067,7 +1133,7 @@ function renderMics() {
     <div class="mic-item">
       <span class="mic-tag${mm.kind === 'iem' ? ' iem' : ''}">${mm.name}</span>
       <div class="mic-desc">
-        <div class="mic-name">${mm.brand} ${mm.model}</div>
+        <div class="mic-name">${(mm.brand + ' ' + mm.model).trim()}</div>
         <div class="mic-band">${mm.band} · ${mm.fmin}–${mm.fmax} MHz · ${mm.spacing} kHz</div>
       </div>
       <button class="mic-x" data-i="${i}" aria-label="Retirer ${mm.name}">×</button>
@@ -1087,6 +1153,7 @@ function renderMics() {
 function refreshAddLabel() {
   const btn = $('addMic');
   if (mics.length >= MAX_MICS) { btn.textContent = 'Limite de ' + MAX_MICS + ' voies atteinte'; return; }
+  if (brandSel.value === CUSTOM) { btn.textContent = '+ Ajouter ce système'; return; }
   btn.textContent = kindSel.value === 'iem' ? '+ Ajouter ce Ears monitor' : '+ Ajouter ce micro';
 }
 
@@ -1343,7 +1410,8 @@ function whyBlocked(mic, channels) {
   if (occ.length && frac >= 0.45) {
     const chs = occ.map(c => c.ch).slice(0, 6).join(', ');
     const plural = occ.length > 1;
-    return `Plage ${lo}–${hi} MHz trop encombrée ici : ${occ.length} ${plural ? 'canaux' : 'canal'} TV occupé${plural ? 's' : ''} (ch ${chs}${occ.length > 6 ? '…' : ''}) couvre${plural ? 'nt' : ''} ~${Math.round(frac * 100)} % de la bande. Choisissez une autre gamme/bande ou un modèle large bande.`;
+    return `Plage ${lo}–${hi} MHz trop encombrée ici : ${occ.length} ${plural ? 'canaux' : 'canal'} TV occupé${plural ? 's' : ''} (ch ${chs}${occ.length > 6 ? '…' : ''}) couvre${plural ? 'nt' : ''} ~${Math.round(frac * 100)} % de la bande. Choisissez une autre gamme/bande ou un modèle large bande.` +
+      `<span class="has-tip tip-left why-tip" tabindex="0" role="note" aria-label="Cas d’une salle blindée">Utilisable quand même en intérieur ?<span class="tip">Ces fréquences ne pourraient fonctionner en intérieur que si la salle se comporte en <b>cage de Faraday</b> : une structure métallique ou en béton fortement armé qui bloque la réception de la TNT extérieure. Les canaux TV n’étant alors pas captés sur place, la fréquence peut être réutilisée — mais c’est à <b>confirmer impérativement par un scan RF sur site</b> avant le show.</span></span>`;
   }
   return 'Pas de créneau libre compatible avec les autres voies (espacement / intermodulation). Réduisez le nombre de voies, élargissez la gamme ou retirez une voie proche.';
 }
