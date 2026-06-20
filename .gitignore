@@ -1,0 +1,9 @@
+# Dépendances
+node_modules/
+
+# Build (généré par `npm run build`, à déployer mais non versionné)
+dist/
+
+# Divers
+.DS_Store
+*.log
