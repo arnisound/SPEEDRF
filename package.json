@@ -7,9 +7,11 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "python3 -m http.server --directory src 8080",
-    "preview": "python3 -m http.server --directory dist 8081"
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "terser": "^5.48.0"
+    "terser": "^5.48.0",
+    "wrangler": "^4.112.0"
   }
 }
