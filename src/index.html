@@ -3,6 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- =========================================================================
+     BARRIÈRE DE LICENCE ARNISOUND TOOLS — Speed RF
+     À coller tout en haut du <head> de  src/index.html  du dépôt SPEEDRF,
+     AVANT tout autre <script>. Puis commit → Cloudflare rebuild.
+     Pour RF Shot : mêmes lignes, mais PRODUCT='rf-shot' et
+     PURCHASE_URL='https://arnisoundtools.com/rf-shot', à coller dans
+     frontend/index.html du dépôt RFSHOT.
+     ========================================================================= -->
+<script type="module">
+  // Cache la page tant que l'accès n'est pas vérifié (anti-flash)
+  document.documentElement.style.visibility = 'hidden';
+  const reveal = () => { document.documentElement.style.visibility = ''; };
+  const safety = setTimeout(reveal, 6000); // si le contrôle traîne : on n'enferme pas
+
+  const PRODUCT      = 'speed-rf';
+  const PURCHASE_URL = 'https://arnisoundtools.com/speed-rf';
+  const LOGIN_URL    = 'https://arnisoundtools.com/login';
+  const SUPABASE_URL = 'https://knudezgfliycmakdpdmg.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtudWRlemdmbGl5Y21ha2RwZG1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MDYxMzksImV4cCI6MjA5OTk4MjEzOX0.MWdVW0p2uLnSmhc3q2woJjQ4y9CTbHxyQhOPXaUh3yY';
+  const STORAGE_KEY  = 'arnisound-auth';
+
+  // Même stockage cookie que le site → session partagée entre sous-domaines
+  function cookieStorage() {
+    if (!location.hostname.endsWith('arnisoundtools.com')) return undefined;
+    const domainAttr = '; domain=.arnisoundtools.com';
+    const secureAttr = location.protocol === 'https:' ? '; Secure' : '';
+    const CHUNK = 3500;
+    const b64e = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const b64d = (s) => { s = s.replace(/-/g,'+').replace(/_/g,'/'); while (s.length % 4) s += '='; return decodeURIComponent(escape(atob(s))); };
+    const readCookie = (name) => { const esc = name.replace(/([.*+?^${}()|[\]\\])/g,'\\$1'); const m = document.cookie.match('(?:^|; )' + esc + '=([^;]*)'); return m ? m[1] : null; };
+    const writeCookie = (name, value, maxAge) => { document.cookie = name + '=' + value + domainAttr + '; path=/; max-age=' + maxAge + '; SameSite=Lax' + secureAttr; };
+    return {
+      getItem(key) { let raw = readCookie(key); if (raw === null) { let i=0, acc='', p; while ((p = readCookie(key+'.'+i)) !== null) { acc += p; i++; } raw = acc || null; } if (raw === null) return null; try { return b64d(raw); } catch { return null; } },
+      setItem(key, value) { this.removeItem(key); const b = b64e(value); if (b.length <= CHUNK) writeCookie(key, b, 31536000); else for (let i=0; i*CHUNK<b.length; i++) writeCookie(key+'.'+i, b.slice(i*CHUNK,(i+1)*CHUNK), 31536000); },
+      removeItem(key) { writeCookie(key,'',0); for (let i=0;i<16;i++) writeCookie(key+'.'+i,'',0); },
+    };
+  }
+
+  try {
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { storage: cookieStorage(), storageKey: STORAGE_KEY, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    });
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      location.replace(LOGIN_URL);                 // pas connecté → connexion
+    } else {
+      const { data, error } = await supabase
+        .from('licenses').select('product')
+        .eq('product', PRODUCT).eq('active', true).maybeSingle();
+      if (error)      { clearTimeout(safety); reveal(); }   // erreur infra → on n'enferme pas
+      else if (!data) { location.replace(PURCHASE_URL); }   // pas de licence → page d'achat
+      else            { clearTimeout(safety); reveal(); }   // licence OK → accès
+    }
+  } catch (e) {
+    clearTimeout(safety); reveal();                // CDN/erreur → on n'enferme pas
+  }
+</script>
 <title>SPEED RF by Arnisound tools — Plan de fréquences</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
