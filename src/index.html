@@ -51,11 +51,12 @@
       location.replace(LOGIN_URL);                 // pas connecté → connexion
     } else {
       const { data, error } = await supabase
-        .from('licenses').select('product')
+        .from('licenses').select('product, expires_at')
         .eq('product', PRODUCT).eq('active', true).maybeSingle();
-      if (error)      { clearTimeout(safety); reveal(); }   // erreur infra → on n'enferme pas
-      else if (!data) { location.replace(PURCHASE_URL); }   // pas de licence → page d'achat
-      else            { clearTimeout(safety); reveal(); }   // licence OK → accès
+      const expired = data && data.expires_at && new Date(data.expires_at) < new Date();
+      if (error)               { clearTimeout(safety); reveal(); }   // erreur infra → on n'enferme pas
+      else if (!data || expired) { location.replace(PURCHASE_URL); } // pas de licence / expirée → achat
+      else                     { clearTimeout(safety); reveal(); }   // licence valide → accès
     }
   } catch (e) {
     clearTimeout(safety); reveal();                // CDN/erreur → on n'enferme pas
